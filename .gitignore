@@ -1,0 +1,40 @@
+# Dependencies
+node_modules
+node_modules/
+node_modules.nosync
+node_modules.nosync/
+client/node_modules
+server/node_modules
+
+# Build output
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Vite
+client/.vite/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Claude Code
+.claude/
+
+# Internal docs (not for repo)
+CHANGELOG.md
+PROJECT_SUMMARY.md
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
