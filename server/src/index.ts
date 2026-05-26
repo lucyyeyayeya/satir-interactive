@@ -158,7 +158,7 @@ function handleJoin(
 ): void {
   const room = rooms.get(roomId);
   if (!room) {
-    send(ws, { type: "error", message: `Room ${roomId} does not exist` });
+    send(ws, { type: "error", message: `找不到房間 ${roomId}，請確認房間代碼` });
     return;
   }
 
@@ -226,26 +226,26 @@ function handleJoin(
 function handleAddQuestion(ws: WebSocket, question: Question): void {
   const meta = clientMeta.get(ws);
   if (!meta || meta.role !== "host") {
-    send(ws, { type: "error", message: "Only the host can add questions" });
+    send(ws, { type: "error", message: "只有主持人可以新增題目" });
     return;
   }
 
   const room = rooms.get(meta.roomId);
   if (!room) {
-    send(ws, { type: "error", message: "Room not found" });
+    send(ws, { type: "error", message: "找不到此房間" });
     return;
   }
 
   if (room.phase !== "waiting") {
     send(ws, {
       type: "error",
-      message: "Questions can only be modified during the waiting phase",
+      message: "課堂進行中，無法修改題目",
     });
     return;
   }
 
   if (!question || typeof question.id !== "string" || typeof question.text !== "string") {
-    send(ws, { type: "error", message: "Invalid question payload" });
+    send(ws, { type: "error", message: "題目格式錯誤" });
     return;
   }
 
@@ -256,20 +256,20 @@ function handleAddQuestion(ws: WebSocket, question: Question): void {
 function handleRemoveQuestion(ws: WebSocket, questionId: string): void {
   const meta = clientMeta.get(ws);
   if (!meta || meta.role !== "host") {
-    send(ws, { type: "error", message: "Only the host can remove questions" });
+    send(ws, { type: "error", message: "只有主持人可以刪除題目" });
     return;
   }
 
   const room = rooms.get(meta.roomId);
   if (!room) {
-    send(ws, { type: "error", message: "Room not found" });
+    send(ws, { type: "error", message: "找不到此房間" });
     return;
   }
 
   if (room.phase !== "waiting") {
     send(ws, {
       type: "error",
-      message: "Questions can only be modified during the waiting phase",
+      message: "課堂進行中，無法修改題目",
     });
     return;
   }
@@ -278,7 +278,7 @@ function handleRemoveQuestion(ws: WebSocket, questionId: string): void {
   room.questions = room.questions.filter((q) => q.id !== questionId);
 
   if (room.questions.length === before) {
-    send(ws, { type: "error", message: `Question ${questionId} not found` });
+    send(ws, { type: "error", message: `找不到題目（id: ${questionId}）` });
     return;
   }
 
@@ -288,26 +288,26 @@ function handleRemoveQuestion(ws: WebSocket, questionId: string): void {
 function handleReorderQuestions(ws: WebSocket, questionIds: string[]): void {
   const meta = clientMeta.get(ws);
   if (!meta || meta.role !== "host") {
-    send(ws, { type: "error", message: "Only the host can reorder questions" });
+    send(ws, { type: "error", message: "只有主持人可以排序題目" });
     return;
   }
 
   const room = rooms.get(meta.roomId);
   if (!room) {
-    send(ws, { type: "error", message: "Room not found" });
+    send(ws, { type: "error", message: "找不到此房間" });
     return;
   }
 
   if (room.phase !== "waiting") {
     send(ws, {
       type: "error",
-      message: "Questions can only be modified during the waiting phase",
+      message: "課堂進行中，無法修改題目",
     });
     return;
   }
 
   if (!Array.isArray(questionIds)) {
-    send(ws, { type: "error", message: "questionIds must be an array" });
+    send(ws, { type: "error", message: "題目順序格式錯誤" });
     return;
   }
 
@@ -330,23 +330,23 @@ function handleReorderQuestions(ws: WebSocket, questionIds: string[]): void {
 function handleStartSession(ws: WebSocket): void {
   const meta = clientMeta.get(ws);
   if (!meta || meta.role !== "host") {
-    send(ws, { type: "error", message: "Only the host can start the session" });
+    send(ws, { type: "error", message: "只有主持人可以開始課堂" });
     return;
   }
 
   const room = rooms.get(meta.roomId);
   if (!room) {
-    send(ws, { type: "error", message: "Room not found" });
+    send(ws, { type: "error", message: "找不到此房間" });
     return;
   }
 
   if (room.phase !== "waiting") {
-    send(ws, { type: "error", message: "Session can only be started from the waiting phase" });
+    send(ws, { type: "error", message: "課堂已開始，無法重新啟動" });
     return;
   }
 
   if (room.questions.length === 0) {
-    send(ws, { type: "error", message: "Cannot start session with no questions" });
+    send(ws, { type: "error", message: "請先新增至少一個題目" });
     return;
   }
 
@@ -362,23 +362,23 @@ function handleStartSession(ws: WebSocket): void {
 function handleNextQuestion(ws: WebSocket): void {
   const meta = clientMeta.get(ws);
   if (!meta || meta.role !== "host") {
-    send(ws, { type: "error", message: "Only the host can advance questions" });
+    send(ws, { type: "error", message: "只有主持人可以切換題目" });
     return;
   }
 
   const room = rooms.get(meta.roomId);
   if (!room) {
-    send(ws, { type: "error", message: "Room not found" });
+    send(ws, { type: "error", message: "找不到此房間" });
     return;
   }
 
   if (room.phase === "ended") {
-    send(ws, { type: "error", message: "Session has already ended" });
+    send(ws, { type: "error", message: "課堂已結束" });
     return;
   }
 
   if (room.phase === "waiting") {
-    send(ws, { type: "error", message: "Session has not started yet" });
+    send(ws, { type: "error", message: "課堂尚未開始" });
     return;
   }
 
@@ -400,27 +400,27 @@ function handleNextQuestion(ws: WebSocket): void {
 function handleSubmitAnswer(ws: WebSocket, answer: string): void {
   const meta = clientMeta.get(ws);
   if (!meta || meta.role !== "participant" || !meta.participantId) {
-    send(ws, { type: "error", message: "Only participants can submit answers" });
+    send(ws, { type: "error", message: "只有學員可以送出回答" });
     return;
   }
 
   const room = rooms.get(meta.roomId);
   if (!room) {
-    send(ws, { type: "error", message: "Room not found" });
+    send(ws, { type: "error", message: "找不到此房間" });
     return;
   }
 
   if (room.phase !== "answering") {
     send(ws, {
       type: "error",
-      message: "Answers can only be submitted during the answering phase",
+      message: "目前非作答階段，無法送出回答",
     });
     return;
   }
 
   const participant = room.participants.get(meta.participantId);
   if (!participant) {
-    send(ws, { type: "error", message: "Participant not found" });
+    send(ws, { type: "error", message: "找不到此學員" });
     return;
   }
 
@@ -440,23 +440,23 @@ function handleSubmitAnswer(ws: WebSocket, answer: string): void {
 function handleReveal(ws: WebSocket): void {
   const meta = clientMeta.get(ws);
   if (!meta || meta.role !== "host") {
-    send(ws, { type: "error", message: "Only the host can reveal answers" });
+    send(ws, { type: "error", message: "只有主持人可以公佈答案" });
     return;
   }
 
   const room = rooms.get(meta.roomId);
   if (!room) {
-    send(ws, { type: "error", message: "Room not found" });
+    send(ws, { type: "error", message: "找不到此房間" });
     return;
   }
 
   if (room.phase === "ended") {
-    send(ws, { type: "error", message: "Session has already ended" });
+    send(ws, { type: "error", message: "課堂已結束" });
     return;
   }
 
   if (room.phase === "waiting") {
-    send(ws, { type: "error", message: "Session has not started yet" });
+    send(ws, { type: "error", message: "課堂尚未開始" });
     return;
   }
 
@@ -512,7 +512,7 @@ wss.on("connection", (ws: WebSocket) => {
     try {
       msg = JSON.parse(raw.toString());
     } catch {
-      send(ws, { type: "error", message: "Invalid JSON" });
+      send(ws, { type: "error", message: "訊息格式錯誤" });
       return;
     }
 
@@ -528,7 +528,7 @@ wss.on("connection", (ws: WebSocket) => {
         const role = msg.role as "host" | "participant";
         const nickname = msg.nickname as string | undefined;
         if (!roomId || (role !== "host" && role !== "participant")) {
-          send(ws, { type: "error", message: "Invalid join payload" });
+          send(ws, { type: "error", message: "加入房間的資料格式錯誤" });
           return;
         }
         handleJoin(ws, roomId, role, nickname);
@@ -542,7 +542,7 @@ wss.on("connection", (ws: WebSocket) => {
       case "remove_question": {
         const questionId = msg.questionId as string;
         if (typeof questionId !== "string") {
-          send(ws, { type: "error", message: "questionId must be a string" });
+          send(ws, { type: "error", message: "題目 ID 格式錯誤" });
           return;
         }
         handleRemoveQuestion(ws, questionId);
@@ -564,7 +564,7 @@ wss.on("connection", (ws: WebSocket) => {
       case "submit_answer": {
         const answer = msg.answer;
         if (typeof answer !== "string" || answer.trim() === "") {
-          send(ws, { type: "error", message: "answer must be a non-empty string" });
+          send(ws, { type: "error", message: "回答內容不可為空" });
           return;
         }
         handleSubmitAnswer(ws, answer.trim());
@@ -575,7 +575,7 @@ wss.on("connection", (ws: WebSocket) => {
         break;
       }
       default: {
-        send(ws, { type: "error", message: `Unknown message type: ${type}` });
+        send(ws, { type: "error", message: `未知的訊息類型：${type}` });
       }
     }
   });

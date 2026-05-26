@@ -54,6 +54,7 @@ export default function QuestionEditor() {
   // Local question deck — server is source of truth on mount, then we sync actions
   const [questions, setQuestions] = useState<LocalQuestion[]>([])
   const [joined, setJoined] = useState(false)
+  const [roomPhase, setRoomPhase] = useState<'waiting' | 'answering' | 'revealed' | 'ended'>('waiting')
   const [startingSession, setStartingSession] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -82,6 +83,7 @@ export default function QuestionEditor() {
   const handleMessage = useCallback((msg: ServerMessage) => {
     if (msg.type === 'joined') {
       setJoined(true)
+      setRoomPhase(msg.phase)
       serverQuestionsRef.current = msg.questions
       setQuestions(
         msg.questions.map((q) => ({
@@ -384,42 +386,60 @@ export default function QuestionEditor() {
           <p className="text-sm text-stone-400">
             共 <span className="font-semibold text-stone-700">{questions.length}</span> 題
           </p>
-          <button
-            onClick={handleStartSession}
-            disabled={questions.length === 0 || startingSession || !connected}
-            className="flex items-center gap-2 px-5 py-2.5 bg-amber-700 hover:bg-amber-800 disabled:bg-stone-200 disabled:text-stone-400 text-white font-bold text-sm rounded-xl transition shadow-sm"
-          >
-            {startingSession ? (
-              <>
-                <svg
-                  className="animate-spin h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8H4z"
-                  />
-                </svg>
-                啟動中…
-              </>
-            ) : (
-              <>
+
+          {roomPhase !== 'waiting' ? (
+            /* Session already started — show status + go-to-classroom button */
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 font-semibold">
+                {roomPhase === 'ended' ? '課堂已結束' : '課堂進行中'}
+              </span>
+              <button
+                onClick={() => navigate(`/host/${roomId}`)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-amber-700 hover:bg-amber-800 text-white font-bold text-sm rounded-xl transition shadow-sm"
+              >
                 <span>▶</span>
-                開始課堂
-              </>
-            )}
-          </button>
+                進入課堂
+              </button>
+            </div>
+          ) : (
+            /* Waiting phase — normal start button */
+            <button
+              onClick={handleStartSession}
+              disabled={questions.length === 0 || startingSession || !connected}
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-700 hover:bg-amber-800 disabled:bg-stone-200 disabled:text-stone-400 text-white font-bold text-sm rounded-xl transition shadow-sm"
+            >
+              {startingSession ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    />
+                  </svg>
+                  啟動中…
+                </>
+              ) : (
+                <>
+                  <span>▶</span>
+                  開始課堂
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
