@@ -347,11 +347,13 @@ function RevealedMain({
   answers,
   isLast,
   onNext,
+  isHistory = false,
 }: {
   question: Question
   answers: ParticipantAnswers[]
   isLast: boolean
   onNext: () => void
+  isHistory?: boolean
 }) {
   const [showNickname, setShowNickname] = useState(false)
 
@@ -432,24 +434,26 @@ function RevealedMain({
         </div>
       )}
 
-      {/* Navigation */}
-      <div className="flex justify-end pt-1">
-        {isLast ? (
-          <button
-            onClick={onNext}
-            className="px-7 py-2.5 bg-stone-700 hover:bg-stone-800 text-white font-bold rounded-xl transition shadow-sm text-sm"
-          >
-            結束課堂
-          </button>
-        ) : (
-          <button
-            onClick={onNext}
-            className="px-7 py-2.5 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl transition shadow-sm text-sm"
-          >
-            下一題 →
-          </button>
-        )}
-      </div>
+      {/* Navigation — hidden in history/review mode */}
+      {!isHistory && (
+        <div className="flex justify-end pt-1">
+          {isLast ? (
+            <button
+              onClick={onNext}
+              className="px-7 py-2.5 bg-stone-700 hover:bg-stone-800 text-white font-bold rounded-xl transition shadow-sm text-sm"
+            >
+              結束課堂
+            </button>
+          ) : (
+            <button
+              onClick={onNext}
+              className="px-7 py-2.5 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl transition shadow-sm text-sm"
+            >
+              下一題 →
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -477,7 +481,11 @@ export default function Host() {
   const [showQRModal, setShowQRModal] = useState(false)
 
   // Sidebar toggle — visible on all screen sizes, defaults open
-  const [showSidebar, setShowSidebar] = useState(true)
+  // Default closed on mobile (opens via hamburger); desktop can toggle too
+  const [showSidebar, setShowSidebar] = useState(false)
+
+  // Round history navigation — null = current live phase
+  const [viewingRound, setViewingRound] = useState<number | null>(null)
 
   const joinUrl = `${window.location.origin}/join/${roomId}`
   const joinedRef = useRef(false)
@@ -730,8 +738,8 @@ export default function Host() {
       {/* Slim sticky header */}
       <header className="bg-white border-b border-amber-100 shadow-sm sticky top-0 z-20">
         <div className="px-4 py-2.5 flex items-center justify-between gap-3">
-          {/* Left: back button + title + room code */}
-          <div className="flex items-center gap-3 min-w-0">
+          {/* Left: back button + title (room code hidden on mobile) */}
+          <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => navigate('/')}
               className="flex items-center gap-1 text-sm text-stone-500 hover:text-amber-700 transition flex-shrink-0"
@@ -741,18 +749,18 @@ export default function Host() {
               <span className="hidden sm:inline text-xs">儀表板</span>
             </button>
             <span className="text-stone-200 hidden sm:inline">|</span>
-            <h1 className="text-base font-bold text-amber-900 whitespace-nowrap">
+            <h1 className="text-sm sm:text-base font-bold text-amber-900 truncate">
               薩提爾課堂互動
             </h1>
-            <span className="text-stone-300">·</span>
-            <span className="text-xs text-stone-500">
+            <span className="hidden sm:inline text-stone-300">·</span>
+            <span className="hidden sm:inline text-xs text-stone-500 flex-shrink-0">
               房間{' '}
               <span className="font-mono font-semibold text-stone-700">{roomId}</span>
             </span>
           </div>
 
-          {/* Right: participant badge + connection + QR/link + edit + sidebar toggle */}
-          <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Right: participant badge + connection + QR + edit + sidebar toggle */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 text-sm text-stone-600">
               <span>👥</span>
               <span className="font-semibold text-amber-800">{participantCount}</span>
@@ -760,22 +768,24 @@ export default function Host() {
             <ConnectionDot connected={connected} />
             <button
               onClick={() => setShowQRModal(true)}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold transition border bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+              className="px-2 py-1 rounded-lg text-xs font-semibold transition border bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
             >
-              QR / 連結
+              <span className="hidden sm:inline">QR / 連結</span>
+              <span className="sm:hidden">QR</span>
             </button>
             {(phase === 'waiting' || phase === 'answering') && (
               <Link
                 to={`/host/${roomId}/edit`}
-                className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition"
+                className="px-2 py-1 rounded-lg text-xs font-semibold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition"
               >
-                ✏️ 題庫
+                <span className="hidden sm:inline">✏️ 題庫</span>
+                <span className="sm:hidden">✏️</span>
               </Link>
             )}
             {/* Sidebar hamburger toggle */}
             <button
               onClick={() => setShowSidebar((v) => !v)}
-              className={`w-8 h-8 flex flex-col items-center justify-center gap-1 rounded-lg border transition ${
+              className={`w-8 h-8 flex flex-col items-center justify-center gap-1 rounded-lg border transition flex-shrink-0 ${
                 showSidebar
                   ? 'bg-amber-100 border-amber-300 text-amber-800'
                   : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'
@@ -808,39 +818,82 @@ export default function Host() {
       <div className="flex-1 flex flex-col lg:flex-row gap-0 overflow-hidden">
         {/* Main content */}
         <main className="flex-1 min-w-0 overflow-y-auto px-4 lg:px-6 py-4 lg:py-6">
-          {phase === 'waiting' && (
-            <WaitingMain
-              joinUrl={joinUrl}
-              participantCount={participantCount}
-              copied={copied}
-              onCopy={copyJoinUrl}
-              onShowQR={() => setShowQRModal(true)}
-              questionCount={questions.length}
-              roomId={roomId ?? ''}
-            />
+
+          {/* Round navigation tabs — shown once at least one round has been revealed */}
+          {allSummary.length > 0 && (
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              {allSummary.map((s, i) => (
+                <button
+                  key={s.question.id}
+                  onClick={() => setViewingRound(i)}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                    viewingRound === i
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                  }`}
+                >
+                  第 {i + 1} 輪
+                </button>
+              ))}
+              <button
+                onClick={() => setViewingRound(null)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                  viewingRound === null
+                    ? 'bg-stone-700 text-white shadow-sm'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                目前 ▶
+              </button>
+            </div>
           )}
-          {phase === 'answering' && currentQuestion && (
-            <AnsweringMain
-              question={currentQuestion}
-              answerCount={answerCount}
-              participantCount={participantCount}
-              onReveal={handleReveal}
-            />
-          )}
-          {phase === 'revealed' && currentQuestion && (
+
+          {/* History view — when a past round tab is selected */}
+          {viewingRound !== null && allSummary[viewingRound] ? (
             <RevealedMain
-              question={currentQuestion}
-              answers={revealedAnswers}
-              isLast={isLastQuestion}
-              onNext={handleNext}
+              question={allSummary[viewingRound].question}
+              answers={allSummary[viewingRound].answers}
+              isLast={false}
+              onNext={() => {}}
+              isHistory={true}
             />
+          ) : (
+            <>
+              {phase === 'waiting' && (
+                <WaitingMain
+                  joinUrl={joinUrl}
+                  participantCount={participantCount}
+                  copied={copied}
+                  onCopy={copyJoinUrl}
+                  onShowQR={() => setShowQRModal(true)}
+                  questionCount={questions.length}
+                  roomId={roomId ?? ''}
+                />
+              )}
+              {phase === 'answering' && currentQuestion && (
+                <AnsweringMain
+                  question={currentQuestion}
+                  answerCount={answerCount}
+                  participantCount={participantCount}
+                  onReveal={handleReveal}
+                />
+              )}
+              {phase === 'revealed' && currentQuestion && (
+                <RevealedMain
+                  question={currentQuestion}
+                  answers={revealedAnswers}
+                  isLast={isLastQuestion}
+                  onNext={handleNext}
+                />
+              )}
+            </>
           )}
         </main>
 
         {/* Right sidebar: participants + question progress */}
         <aside
           className={`
-            w-56 xl:w-64 flex-shrink-0
+            w-full lg:w-56 xl:w-64 flex-shrink-0
             bg-white border-t lg:border-t-0 lg:border-l border-amber-100
             ${showSidebar ? 'block' : 'hidden'}
           `}
