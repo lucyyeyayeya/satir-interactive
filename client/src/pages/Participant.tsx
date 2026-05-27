@@ -12,15 +12,21 @@ import { WS_URL } from '../lib/config'
 
 // ─── Outer component: nickname gate ─────────────────────────────────────────
 
+const nicknameKey = (roomId: string) => `satir_nickname_${roomId}`
+
 export default function Participant() {
   const { roomId } = useParams<{ roomId: string }>()
-  const [pendingNickname, setPendingNickname] = useState('')
-  const [submittedNickname, setSubmittedNickname] = useState<string | null>(null)
+
+  // Restore saved nickname — auto-skip entry screen on reconnect
+  const saved = roomId ? (localStorage.getItem(nicknameKey(roomId)) ?? '') : ''
+  const [pendingNickname, setPendingNickname] = useState(saved)
+  const [submittedNickname, setSubmittedNickname] = useState<string | null>(saved || null)
 
   const handleNicknameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = pendingNickname.trim()
     if (!trimmed) return
+    if (roomId) localStorage.setItem(nicknameKey(roomId), trimmed)
     setSubmittedNickname(trimmed)
   }
 
@@ -141,6 +147,8 @@ function ParticipantSession({
     setState((prev) => {
       switch (msg.type) {
         case 'joined':
+          // Save server-confirmed nickname (may differ due to ②③ deduplication)
+          localStorage.setItem(nicknameKey(roomId), msg.nickname)
           return {
             ...prev,
             joined: true,
@@ -414,7 +422,7 @@ function ParticipantSession({
                           <span className="text-xs text-stone-400 mt-0.5 min-w-[1.25rem] text-right flex-shrink-0">
                             {i + 1}.
                           </span>
-                          <span className="text-stone-700 text-sm leading-relaxed">{ans}</span>
+                          <span className="text-stone-700 text-sm leading-relaxed break-all">{ans}</span>
                         </li>
                       ))}
                     </ol>
@@ -498,7 +506,7 @@ function ParticipantSession({
                     <span className="text-xs text-stone-300 mt-0.5 min-w-[1.25rem] text-right flex-shrink-0">
                       {i + 1}.
                     </span>
-                    <span className="text-stone-500 text-sm leading-relaxed">{ans}</span>
+                    <span className="text-stone-500 text-sm leading-relaxed break-all">{ans}</span>
                   </li>
                 ))}
               </ol>

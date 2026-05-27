@@ -137,11 +137,20 @@ function ParticipantList({
 function QuestionProgress({
   questions,
   currentQuestion,
+  allSummary,
+  viewingRoundQuestionId,
+  onSelectRound,
 }: {
   questions: QuestionDraft[]
   currentQuestion: Question | null
+  allSummary: { question: Question; answers: ParticipantAnswers[] }[]
+  viewingRoundQuestionId: string | null
+  onSelectRound: (summaryIndex: number) => void
 }) {
-  const [collapsed, setCollapsed] = useState(true)
+  const [collapsed, setCollapsed] = useState(false)
+
+  // Map question id → summary index for revealed rounds
+  const summaryIndexById = new Map(allSummary.map((s, i) => [s.question.id, i]))
 
   return (
     <div className="border-t border-amber-100 pt-4">
@@ -163,21 +172,43 @@ function QuestionProgress({
             <p className="text-xs text-stone-400">（無題目）</p>
           ) : (
             questions.map((q, i) => {
-              const isCurrent = currentQuestion && currentQuestion.id === q.id
+              const isCurrent = currentQuestion?.id === q.id
+              const summaryIdx = summaryIndexById.get(q.id)
+              const isRevealed = summaryIdx !== undefined
+              const isViewing = viewingRoundQuestionId === q.id
+
               return (
                 <div
                   key={q.id}
-                  className={`rounded-lg px-3 py-2 text-xs leading-snug transition ${
-                    isCurrent
+                  onClick={() => isRevealed && onSelectRound(summaryIdx!)}
+                  title={isRevealed ? '點擊回顧此輪答案' : undefined}
+                  className={`rounded-lg px-3 py-2 text-xs leading-snug transition select-none ${
+                    isViewing
+                      ? 'bg-amber-300 border border-amber-400 text-amber-900 font-semibold cursor-pointer'
+                      : isCurrent
                       ? 'bg-amber-200 border border-amber-300 text-amber-900 font-semibold'
-                      : 'bg-stone-100 text-stone-500'
+                      : isRevealed
+                      ? 'bg-stone-100 text-stone-600 cursor-pointer hover:bg-amber-50 hover:text-amber-800'
+                      : 'bg-stone-100 text-stone-400'
                   }`}
                 >
                   <span className="mr-1.5 font-bold text-stone-400">{i + 1}.</span>
                   {q.text}
+                  {isRevealed && !isCurrent && (
+                    <span className="ml-1 text-stone-400">✓</span>
+                  )}
                 </div>
               )
             })
+          )}
+          {/* Return to current button when viewing history */}
+          {viewingRoundQuestionId && (
+            <button
+              onClick={() => onSelectRound(-1)}
+              className="w-full mt-1 py-1.5 rounded-lg text-xs font-semibold bg-stone-700 text-white hover:bg-stone-800 transition"
+            >
+              目前進度 ▶
+            </button>
           )}
         </div>
       )}
@@ -422,7 +453,7 @@ function RevealedMain({
                   {pa.answers.map((answer, i) => (
                     <span
                       key={i}
-                      className="text-xs text-stone-700 bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-100 leading-snug"
+                      className="text-xs text-stone-700 bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-100 leading-snug break-all"
                     >
                       {answer}
                     </span>
@@ -713,7 +744,7 @@ export default function Host() {
                             {pa.answers.map((a, j) => (
                               <span
                                 key={j}
-                                className="text-xs text-stone-700 bg-white rounded-lg px-2 py-1 border border-amber-100 leading-snug"
+                                className="text-xs text-stone-700 bg-white rounded-lg px-2 py-1 border border-amber-100 leading-snug break-all"
                               >
                                 {a}
                               </span>
@@ -901,7 +932,15 @@ export default function Host() {
           <div className="p-4 flex flex-col gap-4 lg:max-h-[calc(100vh-56px)] lg:overflow-y-auto">
             <ParticipantList participants={participants} count={participantCount} />
             {phase !== 'waiting' && (
-              <QuestionProgress questions={questions} currentQuestion={currentQuestion} />
+              <QuestionProgress
+                questions={questions}
+                currentQuestion={currentQuestion}
+                allSummary={allSummary}
+                viewingRoundQuestionId={
+                  viewingRound !== null ? (allSummary[viewingRound]?.question.id ?? null) : null
+                }
+                onSelectRound={(idx) => setViewingRound(idx === -1 ? null : idx)}
+              />
             )}
           </div>
         </aside>
