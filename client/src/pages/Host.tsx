@@ -449,7 +449,7 @@ function RevealedMain({
                     {displayName}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-col gap-1.5 min-w-0">
                   {pa.answers.map((answer, i) => (
                     <span
                       key={i}
@@ -511,9 +511,8 @@ export default function Host() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [showQRModal, setShowQRModal] = useState(false)
 
-  // Sidebar toggle — visible on all screen sizes, defaults open
-  // Default closed on mobile (opens via hamburger); desktop can toggle too
-  const [showSidebar, setShowSidebar] = useState(false)
+  // Sidebar: open by default on desktop (≥1024px), closed on mobile
+  const [showSidebar, setShowSidebar] = useState(() => window.innerWidth >= 1024)
 
   // Round history navigation — null = current live phase
   const [viewingRound, setViewingRound] = useState<number | null>(null)

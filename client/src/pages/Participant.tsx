@@ -17,10 +17,10 @@ const nicknameKey = (roomId: string) => `satir_nickname_${roomId}`
 export default function Participant() {
   const { roomId } = useParams<{ roomId: string }>()
 
-  // Restore saved nickname — auto-skip entry screen on reconnect
+  // Restore saved nickname — pre-fill the form, but still require user to confirm
   const saved = roomId ? (localStorage.getItem(nicknameKey(roomId)) ?? '') : ''
   const [pendingNickname, setPendingNickname] = useState(saved)
-  const [submittedNickname, setSubmittedNickname] = useState<string | null>(saved || null)
+  const [submittedNickname, setSubmittedNickname] = useState<string | null>(null)
 
   const handleNicknameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -506,7 +506,7 @@ function ParticipantSession({
                     <span className="text-xs text-stone-300 mt-0.5 min-w-[1.25rem] text-right flex-shrink-0">
                       {i + 1}.
                     </span>
-                    <span className="text-stone-500 text-sm leading-relaxed break-all">{ans}</span>
+                    <span className="text-stone-500 text-sm leading-relaxed break-all flex-1 min-w-0">{ans}</span>
                   </li>
                 ))}
               </ol>
