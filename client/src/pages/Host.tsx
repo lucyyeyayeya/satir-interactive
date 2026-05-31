@@ -226,6 +226,7 @@ function WaitingMain({
   onShowQR,
   questionCount,
   roomId,
+  onStart,
 }: {
   joinUrl: string
   participantCount: number
@@ -234,6 +235,7 @@ function WaitingMain({
   onShowQR: () => void
   questionCount: number
   roomId: string
+  onStart: () => void
 }) {
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(joinUrl)}&size=160x160&margin=2`
 
@@ -246,7 +248,7 @@ function WaitingMain({
           <p className="text-stone-400 text-sm mt-1">尚未設定題目，請前往題庫頁設定後再開始課堂</p>
         ) : (
           <p className="text-stone-400 text-sm mt-1">
-            已設定 {questionCount} 題，等待學員加入後即可在題庫頁開始課堂
+            已設定 {questionCount} 題，等學員加入後按「開始課堂」
           </p>
         )}
       </div>
@@ -295,7 +297,7 @@ function WaitingMain({
         </div>
       </div>
 
-      {/* Edit page CTA */}
+      {/* CTA */}
       {questionCount === 0 ? (
         <Link
           to={`/host/${roomId}/edit`}
@@ -304,12 +306,20 @@ function WaitingMain({
           前往題庫設定 →
         </Link>
       ) : (
-        <Link
-          to={`/host/${roomId}/edit`}
-          className="px-8 py-3 border border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-sm rounded-2xl transition"
-        >
-          前往題庫頁開始課堂 →
-        </Link>
+        <div className="flex flex-col items-center gap-3">
+          <button
+            onClick={onStart}
+            className="px-10 py-3.5 bg-amber-700 hover:bg-amber-800 text-white font-bold text-base rounded-2xl transition shadow-md"
+          >
+            ▶ 開始課堂
+          </button>
+          <Link
+            to={`/host/${roomId}/edit`}
+            className="text-xs text-stone-400 hover:text-amber-700 hover:underline transition"
+          >
+            ✏️ 編輯題目
+          </Link>
+        </div>
       )}
     </div>
   )
@@ -638,6 +648,10 @@ export default function Host() {
     setTimeout(() => setCopiedSummary(false), 3000)
   }
 
+  function handleStart() {
+    send({ type: 'start_session' } as ClientMessage)
+  }
+
   function handleReveal() {
     send({ type: 'reveal' } as ClientMessage)
   }
@@ -898,6 +912,7 @@ export default function Host() {
                   onShowQR={() => setShowQRModal(true)}
                   questionCount={questions.length}
                   roomId={roomId ?? ''}
+                  onStart={handleStart}
                 />
               )}
               {phase === 'answering' && currentQuestion && (
