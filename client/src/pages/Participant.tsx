@@ -17,10 +17,10 @@ const nicknameKey = (roomId: string) => `satir_nickname_${roomId}`
 export default function Participant() {
   const { roomId } = useParams<{ roomId: string }>()
 
-  // Restore saved nickname — pre-fill the form, but still require user to confirm
+  // Restore saved nickname — auto-skip form if nickname already saved for this room
   const saved = roomId ? (localStorage.getItem(nicknameKey(roomId)) ?? '') : ''
   const [pendingNickname, setPendingNickname] = useState(saved)
-  const [submittedNickname, setSubmittedNickname] = useState<string | null>(null)
+  const [submittedNickname, setSubmittedNickname] = useState<string | null>(saved || null)
 
   const handleNicknameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
