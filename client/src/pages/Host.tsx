@@ -343,7 +343,7 @@ function AnsweringMain({
       {/* Question badge */}
       <div className="flex items-center gap-2">
         <span className="text-xs font-semibold bg-amber-100 text-amber-800 rounded-full px-3 py-1">
-          第 {question.index + 1} 題 / 共 {question.total} 題
+          第 {question.index + 1} 輪 / 共 {question.total} 輪
         </span>
       </div>
 
@@ -404,7 +404,7 @@ function RevealedMain({
       <div className="bg-white rounded-2xl border border-amber-100 shadow-sm px-6 py-4">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs font-semibold bg-amber-100 text-amber-800 rounded-full px-2.5 py-0.5">
-            第 {question.index + 1} 題
+            第 {question.index + 1} 輪
           </span>
         </div>
         <p className="text-lg font-bold text-stone-800 leading-relaxed">{question.text}</p>
@@ -527,6 +527,9 @@ export default function Host() {
   // Round history navigation — null = current live phase
   const [viewingRound, setViewingRound] = useState<number | null>(null)
 
+  // Prevent waiting-screen flash: hide content until server confirms phase
+  const [serverSynced, setServerSynced] = useState(false)
+
   const joinUrl = `${window.location.origin}/join/${roomId}`
   const joinedRef = useRef(false)
 
@@ -539,6 +542,7 @@ export default function Host() {
   const handleMessage = useCallback((msg: ServerMessage) => {
     switch (msg.type) {
       case 'joined':
+        setServerSynced(true)
         setPhase(msg.phase)
         setCurrentQuestion(msg.currentQuestion)
         setParticipantCount(msg.participantCount)
@@ -630,12 +634,12 @@ export default function Host() {
 
   function copySummaryText() {
     const lines = allSummary.map(({ question, answers }, i) => {
-      const header = `第${i + 1}題：${question.text}`
+      const header = `第${i + 1}輪：${question.text}`
       const sep = '─'.repeat(24)
       const rows = answers.map((pa) => `• ${pa.nickname}：${pa.answers.join('、')}`)
       return [header, sep, ...rows].join('\n')
     })
-    const full = `【課堂摘要】房間 ${roomId}\n${'═'.repeat(24)}\n\n${lines.join('\n\n')}`
+    const full = `【討論摘要】房間 ${roomId}\n${'═'.repeat(24)}\n\n${lines.join('\n\n')}`
     navigator.clipboard.writeText(full).catch(() => {
       const el = document.createElement('textarea')
       el.value = full
@@ -673,7 +677,7 @@ export default function Host() {
             <div className="flex items-center gap-3 min-w-0">
               <span className="text-xl">🌸</span>
               <div>
-                <p className="text-base font-bold text-amber-900">課堂結束</p>
+                <p className="text-base font-bold text-amber-900">討論結束</p>
                 <p className="text-xs font-mono text-stone-400">{roomId}</p>
               </div>
             </div>
@@ -734,7 +738,7 @@ export default function Host() {
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xs font-bold bg-amber-100 text-amber-800 rounded-full px-2.5 py-0.5">
-                      第 {i + 1} 題
+                      第 {i + 1} 輪
                     </span>
                     <span className="text-xs text-stone-400">（{answers.length} 位回答）</span>
                   </div>
@@ -794,7 +798,7 @@ export default function Host() {
             </button>
             <span className="text-stone-200 hidden sm:inline">|</span>
             <h1 className="text-sm sm:text-base font-bold text-amber-900 truncate">
-              薩提爾課堂互動
+              薩提爾互動討論
             </h1>
             <span className="hidden sm:inline text-stone-300">·</span>
             <span className="hidden sm:inline text-xs text-stone-500 flex-shrink-0">
@@ -892,8 +896,12 @@ export default function Host() {
             </div>
           )}
 
-          {/* History view — when a past round tab is selected */}
-          {viewingRound !== null && allSummary[viewingRound] ? (
+          {/* Loading spinner until server confirms phase (prevents waiting-screen flash) */}
+          {!serverSynced ? (
+            <div className="flex items-center justify-center min-h-[300px]">
+              <div className="w-8 h-8 rounded-full border-4 border-amber-200 border-t-amber-500 animate-spin" />
+            </div>
+          ) : viewingRound !== null && allSummary[viewingRound] ? (
             <RevealedMain
               question={allSummary[viewingRound].question}
               answers={allSummary[viewingRound].answers}
@@ -969,6 +977,11 @@ export default function Host() {
           copied={copied}
         />
       )}
+
+      {/* Version footer */}
+      <footer className="text-center py-2 text-xs text-stone-300 border-t border-amber-50">
+        v6 · 薩提爾互動討論工具 · Made by Lucy Y
+      </footer>
     </div>
   )
 }

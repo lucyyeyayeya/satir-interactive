@@ -120,8 +120,8 @@ export default function Home() {
       <header className="bg-white border-b border-amber-100 shadow-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-amber-900">薩提爾課堂互動</h1>
-            <p className="text-xs text-stone-400 mt-0.5">教師儀表板</p>
+            <h1 className="text-xl font-bold text-amber-900">薩提爾互動討論</h1>
+            <p className="text-xs text-stone-400 mt-0.5">主持儀表板</p>
           </div>
           <button
             onClick={openModal}
@@ -289,6 +289,9 @@ export default function Home() {
           </div>
         </div>
       )}
+      <footer className="text-center py-3 text-xs text-stone-300">
+        v6 · 薩提爾互動討論工具 · Made by Lucy Y
+      </footer>
     </div>
   )
 }

@@ -269,7 +269,7 @@ export default function QuestionEditor() {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition shrink-0"
           >
             <span>▶</span>
-            <span>進入課堂</span>
+            <span>取得討論間資訊</span>
           </button>
         </div>
       </header>
@@ -398,7 +398,7 @@ export default function QuestionEditor() {
                 className="flex items-center gap-2 px-5 py-2.5 bg-amber-700 hover:bg-amber-800 text-white font-bold text-sm rounded-xl transition shadow-sm"
               >
                 <span>▶</span>
-                進入課堂
+                取得討論間資訊
               </button>
             </div>
           ) : (

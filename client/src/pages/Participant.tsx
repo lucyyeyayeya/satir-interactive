@@ -104,6 +104,7 @@ interface SessionState {
   confirmedNickname: string | null  // from server's joined.nickname
   question: Question | null
   revealedAnswers: ParticipantAnswers[]
+  summaryRounds: { question: Question; answers: ParticipantAnswers[] }[]
   submissionsThisQuestion: string[]
   errorMessage: string | null
   joined: boolean
@@ -115,6 +116,7 @@ const initialSessionState: SessionState = {
   confirmedNickname: null,
   question: null,
   revealedAnswers: [],
+  summaryRounds: [],
   submissionsThisQuestion: [],
   errorMessage: null,
   joined: false,
@@ -172,13 +174,23 @@ function ParticipantSession({
             errorMessage: null,
           }
 
-        case 'revealed':
+        case 'revealed': {
+          const newRound = prev.question
+            ? { question: prev.question, answers: msg.answers }
+            : null
           return {
             ...prev,
             phase: 'revealed',
             revealedAnswers: msg.answers,
+            summaryRounds: newRound
+              ? [
+                  ...prev.summaryRounds.filter((r) => r.question.id !== prev.question!.id),
+                  newRound,
+                ]
+              : prev.summaryRounds,
             errorMessage: null,
           }
+        }
 
         case 'session_ended':
           return {
@@ -299,16 +311,63 @@ function ParticipantSession({
   if (state.phase === 'ended') {
     return (
       <PageShell>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-6">
-          <div className="w-20 h-20 rounded-full bg-green-50 border-2 border-green-200 flex items-center justify-center">
-            <span className="text-4xl">🙏</span>
+        <div className="px-5 py-7 max-w-lg mx-auto">
+          {/* Header */}
+          <div className="flex flex-col items-center text-center gap-3 mb-8">
+            <div className="w-16 h-16 rounded-full bg-green-50 border-2 border-green-200 flex items-center justify-center">
+              <span className="text-3xl">🙏</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-stone-700 mb-1">討論結束，謝謝參與！</h2>
+              <p className="text-stone-400 text-sm">感謝你在這次討論中的投入與分享</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-semibold text-stone-700 mb-3">課堂結束，謝謝參與！</h2>
-            <p className="text-stone-400 text-base leading-relaxed max-w-xs mx-auto">
-              感謝你在這次薩提爾課堂中的投入與分享
-            </p>
-          </div>
+
+          {/* All rounds summary */}
+          {state.summaryRounds.length > 0 && (
+            <div className="space-y-5">
+              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">討論摘要</p>
+              {state.summaryRounds.map((round, i) => (
+                <div key={round.question.id} className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+                  <div className="mb-2">
+                    <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                      第 {i + 1} 輪
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-stone-700 mb-3 leading-snug">
+                    {round.question.text}
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {round.answers.map((pa) => {
+                      const isMe = pa.participantId === state.participantId
+                      return (
+                        <div
+                          key={pa.participantId}
+                          className={`rounded-xl p-3 ${
+                            isMe
+                              ? 'bg-amber-50 border border-amber-200'
+                              : 'bg-stone-50 border border-stone-100'
+                          }`}
+                        >
+                          <p className="text-xs font-semibold text-stone-500 mb-1">
+                            {pa.nickname}
+                            {isMe && <span className="ml-1 text-amber-500">（你）</span>}
+                          </p>
+                          <div className="flex flex-col gap-1">
+                            {pa.answers.map((a, j) => (
+                              <span key={j} className="text-sm text-stone-700 break-all leading-relaxed">
+                                {a}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </PageShell>
     )
@@ -375,7 +434,7 @@ function ParticipantSession({
           {state.question && (
             <div className="mb-6">
               <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
-                第 {state.question.index + 1} 題 / 共 {state.question.total} 題
+                第 {state.question.index + 1} 輪 / 共 {state.question.total} 輪
               </span>
               <h2 className="text-xl font-semibold text-stone-800 leading-snug mt-3">
                 {state.question.text}
@@ -451,7 +510,7 @@ function ParticipantSession({
           <div>
             <div className="mb-3">
               <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
-                第 {state.question.index + 1} 題 / 共 {state.question.total} 題
+                第 {state.question.index + 1} 輪 / 共 {state.question.total} 輪
               </span>
             </div>
             <h2 className="text-2xl font-semibold text-stone-800 leading-snug">
@@ -517,7 +576,7 @@ function ParticipantSession({
         {/* Waiting status */}
         <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-50 border border-stone-100 mt-auto">
           <SpinnerDots />
-          <p className="text-stone-400 text-sm">等待老師翻牌...</p>
+          <p className="text-stone-400 text-sm">等待主持人翻牌...</p>
         </div>
       </div>
     </PageShell>
@@ -528,9 +587,12 @@ function ParticipantSession({
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-stone-50 font-sans">
+    <div className="min-h-screen bg-stone-50 font-sans flex flex-col">
       <div className="w-full h-1.5 bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300" />
-      <div className="max-w-lg mx-auto">{children}</div>
+      <div className="flex-1 max-w-lg mx-auto w-full">{children}</div>
+      <footer className="text-center py-3 text-xs text-stone-300">
+        v6 · 薩提爾互動討論工具 · Made by Lucy Y
+      </footer>
     </div>
   )
 }
