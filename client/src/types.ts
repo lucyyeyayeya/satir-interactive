@@ -28,7 +28,15 @@ export interface ParticipantAnswers {
 // Client → Server
 export type ClientMessage =
   | { type: 'create_room' }
-  | { type: 'join'; roomId: string; role: 'host' | 'participant'; nickname?: string }
+  | {
+      type: 'join'
+      roomId: string
+      role: 'host' | 'participant'
+      nickname?: string
+      participantId?: string  // for participant rejoin
+      rejoinToken?: string    // for participant rejoin
+    }
+  | { type: 'restore_room'; roomId: string; questions: { id: string; text: string }[] }
   | { type: 'add_question'; question: { id: string; text: string } }
   | { type: 'remove_question'; questionId: string }
   | { type: 'reorder_questions'; questionIds: string[] }
@@ -53,6 +61,7 @@ export type ServerMessage =
       participants: ParticipantInfo[]   // who is in the room
       nickname: string                  // confirmed nickname (may be deduped)
       showNicknames: boolean            // false = show "參與者 N" labels on reveal screens
+      rejoinToken?: string              // participant-only: token to reconnect & keep answers
     }
   | { type: 'participant_list'; participants: ParticipantInfo[] }
   | { type: 'nickname_visibility'; show: boolean }

@@ -18,7 +18,8 @@ interface Participant {
   participantId: string;
   nickname: string;
   label: string;
-  ws: WebSocket;
+  ws: WebSocket | null; // null = temporarily disconnected (answers kept for rejoin)
+  rejoinToken: string;
   answersByQuestion: Map<number, string[]>;
 }
 
@@ -83,8 +84,19 @@ function send(ws: WebSocket, data: object): void {
 function broadcastAll(room: Room, data: object): void {
   if (room.hostWs) send(room.hostWs, data);
   for (const p of room.participants.values()) {
-    send(p.ws, data);
+    if (p.ws) send(p.ws, data);
   }
+}
+
+function revealedAnswersPayload(
+  room: Room
+): { participantId: string; nickname: string; label: string; answers: string[] }[] {
+  return Array.from(room.participants.values()).map((p) => ({
+    participantId: p.participantId,
+    nickname: p.nickname,
+    label: p.label,
+    answers: p.answersByQuestion.get(room.currentIndex) ?? [],
+  }));
 }
 
 function currentQuestionPayload(
@@ -156,7 +168,9 @@ function handleJoin(
   ws: WebSocket,
   roomId: string,
   role: "host" | "participant",
-  nickname?: string
+  nickname?: string,
+  existingParticipantId?: string,
+  rejoinToken?: string
 ): void {
   const room = rooms.get(roomId);
   if (!room) {
@@ -182,29 +196,59 @@ function handleJoin(
     });
 
     if (room.phase === "revealed") {
-      const answers = Array.from(room.participants.values()).map((p) => ({
-        participantId: p.participantId,
-        nickname: p.nickname,
-        label: p.label,
-        answers: p.answersByQuestion.get(room.currentIndex) ?? [],
-      }));
-      send(ws, { type: "revealed", answers });
+      send(ws, { type: "revealed", answers: revealedAnswersPayload(room) });
     } else if (room.phase === "waiting") {
       send(ws, { type: "question_deck_updated", questions: room.questions });
     }
   } else {
-    // Participant
+    // ── Participant: attempt rejoin (same device reconnect) ──
+    if (existingParticipantId && rejoinToken) {
+      const existing = room.participants.get(existingParticipantId);
+      if (existing && existing.rejoinToken === rejoinToken) {
+        existing.ws = ws;
+        clientMeta.set(ws, {
+          roomId,
+          role: "participant",
+          participantId: existing.participantId,
+        });
+
+        send(ws, {
+          type: "joined",
+          role: "participant",
+          participantId: existing.participantId,
+          participantCount: room.participants.size,
+          currentQuestion: currentQuestionPayload(room),
+          phase: room.phase,
+          questions: room.questions,
+          participants: participantListPayload(room),
+          nickname: existing.nickname,
+          showNicknames: room.showNicknames,
+          rejoinToken: existing.rejoinToken,
+        });
+
+        if (room.phase === "revealed") {
+          send(ws, { type: "revealed", answers: revealedAnswersPayload(room) });
+        }
+
+        broadcastParticipantList(room);
+        return;
+      }
+    }
+
+    // ── New participant ──
     const base = nickname?.trim() || "參與者";
     const confirmedNickname = deduplicateNickname(base, room.nicknames);
     room.nicknames.add(confirmedNickname);
 
     const participantId = randomUUID();
+    const newRejoinToken = randomUUID();
     const label = `參與者 ${room.nextParticipantNumber++}`;
     const participant: Participant = {
       participantId,
       nickname: confirmedNickname,
       label,
       ws,
+      rejoinToken: newRejoinToken,
       answersByQuestion: new Map(),
     };
     room.participants.set(participantId, participant);
@@ -221,7 +265,13 @@ function handleJoin(
       participants: participantListPayload(room),
       nickname: confirmedNickname,
       showNicknames: room.showNicknames,
+      rejoinToken: newRejoinToken,
     });
+
+    // Late joiner during reveal: replay current answers so they aren't blank
+    if (room.phase === "revealed") {
+      send(ws, { type: "revealed", answers: revealedAnswersPayload(room) });
+    }
 
     broadcastParticipantList(room);
   }
@@ -531,14 +581,61 @@ function handleReveal(ws: WebSocket): void {
 
   room.phase = "revealed";
 
-  const answers = Array.from(room.participants.values()).map((p) => ({
-    participantId: p.participantId,
-    nickname: p.nickname,
-    label: p.label,
-    answers: p.answersByQuestion.get(room.currentIndex) ?? [],
-  }));
+  broadcastAll(room, { type: "revealed", answers: revealedAnswersPayload(room) });
+}
 
-  broadcastAll(room, { type: "revealed", answers });
+function handleRestoreRoom(
+  ws: WebSocket,
+  roomId: string,
+  questions: unknown
+): void {
+  if (!roomId || typeof roomId !== "string") {
+    send(ws, { type: "error", message: "還原資料格式錯誤" });
+    return;
+  }
+
+  let room = rooms.get(roomId);
+  if (!room) {
+    const sanitized: Question[] = Array.isArray(questions)
+      ? questions
+          .filter(
+            (q): q is Question =>
+              !!q && typeof q.id === "string" && typeof q.text === "string"
+          )
+          .map((q) => ({ id: q.id, text: q.text }))
+      : [];
+
+    room = {
+      roomId,
+      questions: sanitized,
+      currentIndex: 0,
+      phase: "waiting",
+      hostWs: ws,
+      participants: new Map(),
+      nicknames: new Set(),
+      nextParticipantNumber: 1,
+      showNicknames: false,
+    };
+    rooms.set(roomId, room);
+  } else {
+    room.hostWs = ws;
+  }
+
+  clientMeta.set(ws, { roomId, role: "host" });
+
+  send(ws, {
+    type: "joined",
+    role: "host",
+    participantId: "host",
+    participantCount: room.participants.size,
+    currentQuestion: currentQuestionPayload(room),
+    phase: room.phase,
+    questions: room.questions,
+    participants: participantListPayload(room),
+    nickname: "host",
+    showNicknames: room.showNicknames,
+  });
+  send(ws, { type: "question_deck_updated", questions: room.questions });
 }
 
 // ---------------------------------------------------------------------------
@@ -560,10 +657,10 @@ function handleDisconnect(ws: WebSocket): void {
   } else if (meta.role === "participant" && meta.participantId) {
     const participant = room.participants.get(meta.participantId);
     if (participant) {
-      room.nicknames.delete(participant.nickname);
-      room.participants.delete(meta.participantId);
+      // Keep the participant (answers + nickname) so they can rejoin with their
+      // token after a refresh / network blip. Just mark the socket as gone.
+      participant.ws = null;
     }
-    broadcastParticipantList(room);
   }
 
   clientMeta.delete(ws);
@@ -596,11 +693,18 @@ wss.on("connection", (ws: WebSocket) => {
         const roomId = msg.roomId as string;
         const role = msg.role as "host" | "participant";
         const nickname = msg.nickname as string | undefined;
+        const participantId = msg.participantId as string | undefined;
+        const rejoinToken = msg.rejoinToken as string | undefined;
         if (!roomId || (role !== "host" && role !== "participant")) {
           send(ws, { type: "error", message: "加入房間的資料格式錯誤" });
           return;
         }
-        handleJoin(ws, roomId, role, nickname);
+        handleJoin(ws, roomId, role, nickname, participantId, rejoinToken);
+        break;
+      }
+      case "restore_room": {
+        const roomId = msg.roomId as string;
+        handleRestoreRoom(ws, roomId, msg.questions);
         break;
       }
       case "add_question": {

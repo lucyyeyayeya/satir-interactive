@@ -13,6 +13,8 @@ import { WS_URL } from '../lib/config'
 // ─── Outer component: nickname gate ─────────────────────────────────────────
 
 const nicknameKey = (roomId: string) => `satir_nickname_${roomId}`
+const pidKey = (roomId: string) => `satir_pid_${roomId}`
+const tokenKey = (roomId: string) => `satir_rtoken_${roomId}`
 
 export default function Participant() {
   const { roomId } = useParams<{ roomId: string }>()
@@ -162,6 +164,9 @@ function ParticipantSession({
         case 'joined':
           // Save server-confirmed nickname (may differ due to ②③ deduplication)
           localStorage.setItem(nicknameKey(roomId), msg.nickname)
+          // Persist identity so a refresh / network blip can rejoin and keep answers
+          localStorage.setItem(pidKey(roomId), msg.participantId)
+          if (msg.rejoinToken) localStorage.setItem(tokenKey(roomId), msg.rejoinToken)
           return {
             ...prev,
             joined: true,
@@ -232,11 +237,15 @@ function ParticipantSession({
   useEffect(() => {
     if (connected && !hasJoinedRef.current && roomId) {
       hasJoinedRef.current = true
+      const savedPid = localStorage.getItem(pidKey(roomId)) ?? undefined
+      const savedToken = localStorage.getItem(tokenKey(roomId)) ?? undefined
       const msg: ClientMessage = {
         type: 'join',
         roomId,
         role: 'participant',
         nickname: requestedNickname,
+        participantId: savedPid,
+        rejoinToken: savedToken,
       }
       send(msg)
     }
@@ -606,7 +615,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
       <div className="w-full h-1.5 bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300" />
       <div className="flex-1 max-w-lg mx-auto w-full">{children}</div>
       <footer className="text-center py-3 text-xs text-stone-300">
-        v7 · 薩提爾討論-互動小卡 · Made by Lucy Y
+        v8 · 薩提爾討論-互動小卡 · Made by Lucy Y
       </footer>
     </div>
   )

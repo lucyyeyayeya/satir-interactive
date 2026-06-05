@@ -58,6 +58,8 @@ export default function QuestionEditor() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1)
   const [startingSession, setStartingSession] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [roomMissing, setRoomMissing] = useState(false)
+  const [restoring, setRestoring] = useState(false)
 
   const isMidSession = roomPhase === 'answering' || roomPhase === 'revealed'
   const isQuestionLocked = (idx: number) =>
@@ -89,6 +91,8 @@ export default function QuestionEditor() {
   const handleMessage = useCallback((msg: ServerMessage) => {
     if (msg.type === 'joined') {
       setJoined(true)
+      setRoomMissing(false)
+      setRestoring(false)
       setRoomPhase(msg.phase)
       setCurrentQuestionIndex(msg.currentQuestion?.index ?? -1)
       serverQuestionsRef.current = msg.questions
@@ -123,7 +127,12 @@ export default function QuestionEditor() {
     } else if (msg.type === 'session_started') {
       navigate(`/host/${roomId}`)
     } else if (msg.type === 'error') {
-      setError(msg.message)
+      if (msg.message.includes('找不到房間')) {
+        setRoomMissing(true)
+        setRestoring(false)
+      } else {
+        setError(msg.message)
+      }
       setStartingSession(false)
     }
   }, [navigate, roomId])
@@ -265,6 +274,13 @@ export default function QuestionEditor() {
     send({ type: 'start_session' })
   }
 
+  function handleRestoreRoom() {
+    if (!roomId) return
+    setRestoring(true)
+    const saved = loadQuestionsLocally(roomId)
+    send({ type: 'restore_room', roomId, questions: saved })
+  }
+
   // ── Render ────────────────────────────────────────────────────────
 
   return (
@@ -313,6 +329,25 @@ export default function QuestionEditor() {
           <div className="mb-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
             正在連線至伺服器…
+          </div>
+        )}
+
+        {/* Room missing on server (e.g. after restart) — offer local restore */}
+        {roomMissing && (
+          <div className="mb-4 px-4 py-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-amber-800 text-sm font-semibold mb-1">
+              伺服器上找不到這個討論
+            </p>
+            <p className="text-amber-700 text-xs leading-relaxed mb-3">
+              伺服器可能重新啟動過。可用本機儲存的題目重新建立這個討論（沿用相同房間代碼）。
+            </p>
+            <button
+              onClick={handleRestoreRoom}
+              disabled={restoring}
+              className="px-5 py-2 bg-amber-700 hover:bg-amber-800 disabled:bg-stone-200 disabled:text-stone-400 text-white font-bold text-sm rounded-xl transition shadow-sm"
+            >
+              {restoring ? '還原中…' : '用本機題目還原討論'}
+            </button>
           </div>
         )}
 
