@@ -445,7 +445,7 @@ function RevealedMain({
           <p className="text-stone-400 text-sm">暫無回答</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4">
           {answers.map((pa) => {
             const displayName = showNicknames ? pa.nickname : pa.label
             return (
@@ -454,18 +454,18 @@ function RevealedMain({
                 className="bg-white rounded-2xl border border-amber-100 shadow-sm p-4 hover:border-amber-200 transition"
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-7 h-7 rounded-full bg-amber-200 flex items-center justify-center text-xs text-amber-800 font-bold flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-sm text-amber-800 font-bold flex-shrink-0">
                     {(showNicknames ? pa.nickname : pa.label).charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-sm font-semibold text-stone-700 truncate">
+                  <span className="text-sm lg:text-base font-semibold text-stone-700 truncate">
                     {displayName}
                   </span>
                 </div>
-                <div className="flex flex-col gap-1.5 min-w-0">
+                <div className="flex flex-col gap-2 min-w-0">
                   {pa.answers.map((answer, i) => (
                     <span
                       key={i}
-                      className="text-xs text-stone-700 bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-100 leading-snug break-all"
+                      className="text-sm lg:text-base text-stone-700 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100 leading-relaxed break-words"
                     >
                       {answer}
                     </span>
@@ -761,20 +761,20 @@ export default function Host() {
                   {answers.length === 0 ? (
                     <p className="text-xs text-stone-400">（無回答）</p>
                   ) : (
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-4">
                       {answers.map((pa) => (
                         <div
                           key={pa.participantId}
                           className="bg-amber-50 rounded-xl p-3 border border-amber-100"
                         >
-                          <p className="text-xs font-semibold text-stone-600 mb-2 truncate">
+                          <p className="text-sm lg:text-base font-semibold text-stone-600 mb-2 truncate">
                             {pa.nickname}
                           </p>
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-col gap-1.5">
                             {pa.answers.map((a, j) => (
                               <span
                                 key={j}
-                                className="text-xs text-stone-700 bg-white rounded-lg px-2 py-1 border border-amber-100 leading-snug break-all"
+                                className="text-sm lg:text-base text-stone-700 bg-white rounded-lg px-3 py-2 border border-amber-100 leading-relaxed break-words"
                               >
                                 {a}
                               </span>
