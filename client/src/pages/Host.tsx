@@ -389,15 +389,17 @@ function RevealedMain({
   isLast,
   onNext,
   isHistory = false,
+  showNicknames,
+  onToggleShowNicknames,
 }: {
   question: Question
   answers: ParticipantAnswers[]
   isLast: boolean
   onNext: () => void
   isHistory?: boolean
+  showNicknames: boolean
+  onToggleShowNicknames: (show: boolean) => void
 }) {
-  const [showNickname, setShowNickname] = useState(false)
-
   return (
     <div className="flex flex-col gap-4 py-4">
       {/* Question */}
@@ -417,20 +419,20 @@ function RevealedMain({
           <span className="ml-1.5 text-stone-400 font-normal text-xs">（{answers.length} 位）</span>
         </h3>
 
-        {/* Nickname toggle */}
+        {/* Nickname toggle — synced to all participant devices */}
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <span className="text-xs text-stone-500">顯示暱稱</span>
           <button
-            onClick={() => setShowNickname((v) => !v)}
+            onClick={() => onToggleShowNicknames(!showNicknames)}
             className={`relative w-10 h-5 rounded-full transition-colors ${
-              showNickname ? 'bg-amber-500' : 'bg-stone-300'
+              showNicknames ? 'bg-amber-500' : 'bg-stone-300'
             }`}
             role="switch"
-            aria-checked={showNickname}
+            aria-checked={showNicknames}
           >
             <span
               className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                showNickname ? 'translate-x-5' : 'translate-x-0'
+                showNicknames ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
@@ -445,7 +447,7 @@ function RevealedMain({
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           {answers.map((pa) => {
-            const displayName = showNickname ? pa.nickname : pa.label
+            const displayName = showNicknames ? pa.nickname : pa.label
             return (
               <div
                 key={pa.participantId}
@@ -453,7 +455,7 @@ function RevealedMain({
               >
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-7 h-7 rounded-full bg-amber-200 flex items-center justify-center text-xs text-amber-800 font-bold flex-shrink-0">
-                    {(showNickname ? pa.nickname : pa.label).charAt(0).toUpperCase()}
+                    {(showNicknames ? pa.nickname : pa.label).charAt(0).toUpperCase()}
                   </div>
                   <span className="text-sm font-semibold text-stone-700 truncate">
                     {displayName}
@@ -520,6 +522,7 @@ export default function Host() {
   const [copiedSummary, setCopiedSummary] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [showQRModal, setShowQRModal] = useState(false)
+  const [showNicknames, setShowNicknames] = useState(false)
 
   // Sidebar: open by default on desktop (≥1024px), closed on mobile
   const [showSidebar, setShowSidebar] = useState(() => window.innerWidth >= 1024)
@@ -548,6 +551,11 @@ export default function Host() {
         setParticipantCount(msg.participantCount)
         setQuestions(msg.questions ?? [])
         setParticipants(msg.participants ?? [])
+        setShowNicknames(msg.showNicknames)
+        break
+
+      case 'nickname_visibility':
+        setShowNicknames(msg.show)
         break
 
       case 'participant_list':
@@ -662,6 +670,11 @@ export default function Host() {
 
   function handleNext() {
     send({ type: 'next_question' } as ClientMessage)
+  }
+
+  function handleToggleShowNicknames(show: boolean) {
+    setShowNicknames(show)
+    send({ type: 'set_nickname_visibility', show } as ClientMessage)
   }
 
   const isLastQuestion =
@@ -798,7 +811,7 @@ export default function Host() {
             </button>
             <span className="text-stone-200 hidden sm:inline">|</span>
             <h1 className="text-sm sm:text-base font-bold text-amber-900 truncate">
-              薩提爾互動討論
+              薩提爾討論-互動小卡
             </h1>
             <span className="hidden sm:inline text-stone-300">·</span>
             <span className="hidden sm:inline text-xs text-stone-500 flex-shrink-0">
@@ -908,6 +921,8 @@ export default function Host() {
               isLast={false}
               onNext={() => {}}
               isHistory={true}
+              showNicknames={showNicknames}
+              onToggleShowNicknames={handleToggleShowNicknames}
             />
           ) : (
             <>
@@ -937,6 +952,8 @@ export default function Host() {
                   answers={revealedAnswers}
                   isLast={isLastQuestion}
                   onNext={handleNext}
+                  showNicknames={showNicknames}
+                  onToggleShowNicknames={handleToggleShowNicknames}
                 />
               )}
             </>
@@ -980,7 +997,7 @@ export default function Host() {
 
       {/* Version footer */}
       <footer className="text-center py-2 text-xs text-stone-300 border-t border-amber-50">
-        v6 · 薩提爾互動討論工具 · Made by Lucy Y
+        v7 · 薩提爾討論-互動小卡 · Made by Lucy Y
       </footer>
     </div>
   )

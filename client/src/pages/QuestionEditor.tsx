@@ -55,8 +55,14 @@ export default function QuestionEditor() {
   const [questions, setQuestions] = useState<LocalQuestion[]>([])
   const [joined, setJoined] = useState(false)
   const [roomPhase, setRoomPhase] = useState<'waiting' | 'answering' | 'revealed' | 'ended'>('waiting')
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1)
   const [startingSession, setStartingSession] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isMidSession = roomPhase === 'answering' || roomPhase === 'revealed'
+  const isQuestionLocked = (idx: number) =>
+    roomPhase === 'ended' || (isMidSession && idx <= currentQuestionIndex)
+  const hasUnsynced = questions.some((q) => !q.synced)
 
   // Track pending add operations: localId -> resolve when server confirms
   const pendingAddsRef = useRef<Map<string, (serverId: string) => void>>(new Map())
@@ -84,6 +90,7 @@ export default function QuestionEditor() {
     if (msg.type === 'joined') {
       setJoined(true)
       setRoomPhase(msg.phase)
+      setCurrentQuestionIndex(msg.currentQuestion?.index ?? -1)
       serverQuestionsRef.current = msg.questions
       setQuestions(
         msg.questions.map((q) => ({
@@ -97,18 +104,22 @@ export default function QuestionEditor() {
       setTimeout(expandAll, 50)
     } else if (msg.type === 'question_deck_updated') {
       serverQuestionsRef.current = msg.questions
-      // Resolve any pending add operations by matching new server question
-      // The server echoes back the full deck — the newest question will be the
-      // one we just sent (we match by text since we don't get a per-add ack)
-      // Actually we track them by insertion order in pendingAddsRef.
-      // Since the server just confirms the deck, we update synced state:
       setQuestions((prev) => {
-        const serverMap = new Map(msg.questions.map((q) => [q.id, q]))
-        return prev.map((lq) => ({
-          ...lq,
-          synced: serverMap.has(lq.serverId),
-        }))
+        const prevByServerId = new Map(prev.map((lq) => [lq.serverId, lq]))
+        return msg.questions.map((q) => {
+          const existing = prevByServerId.get(q.id)
+          if (existing) {
+            return { ...existing, text: q.text, synced: true }
+          }
+          return {
+            localId: q.id,
+            serverId: q.id,
+            text: q.text,
+            synced: true,
+          }
+        })
       })
+      setTimeout(expandAll, 50)
     } else if (msg.type === 'session_started') {
       navigate(`/host/${roomId}`)
     } else if (msg.type === 'error') {
@@ -188,6 +199,7 @@ export default function QuestionEditor() {
   }
 
   function deleteQuestion(localId: string) {
+    if (roomPhase !== 'waiting') return
     // Read current questions ref to avoid stale closure, send OUTSIDE setState
     const q = questions.find((x) => x.localId === localId)
     if (q) send({ type: 'remove_question', questionId: q.serverId })
@@ -195,6 +207,7 @@ export default function QuestionEditor() {
   }
 
   function moveQuestion(localId: string, direction: 'up' | 'down') {
+    if (roomPhase !== 'waiting') return
     const idx = questions.findIndex((x) => x.localId === localId)
     if (idx === -1) return
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
@@ -216,6 +229,17 @@ export default function QuestionEditor() {
     // StrictMode double-invocation (which would send remove twice).
     const q = questions.find((x) => x.localId === localId)
     if (!q || q.synced) return
+
+    const idx = questions.findIndex((x) => x.localId === localId)
+    if (isQuestionLocked(idx)) return
+
+    if (roomPhase !== 'waiting') {
+      send({ type: 'update_question', questionId: q.serverId, text: q.text })
+      setQuestions((prev) =>
+        prev.map((x) => (x.localId === localId ? { ...x, synced: true } : x))
+      )
+      return
+    }
 
     const newServerId = generateId()
     send({ type: 'remove_question', questionId: q.serverId })
@@ -292,6 +316,13 @@ export default function QuestionEditor() {
           </div>
         )}
 
+        {/* Mid-session editing notice */}
+        {isMidSession && (
+          <div className="mb-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+            課堂進行中：可修改後續題目、在最後新增題目。已出題與進行中題目無法修改。
+          </div>
+        )}
+
         {/* Error */}
         {error && (
           <div className="mb-4 px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
@@ -312,14 +343,31 @@ export default function QuestionEditor() {
 
         {/* Question list */}
         <div className="space-y-3">
-          {questions.map((q, idx) => (
+          {questions.map((q, idx) => {
+            const locked = isQuestionLocked(idx)
+            return (
             <div
               key={q.localId}
-              className="bg-white rounded-2xl border border-amber-100 shadow-sm px-4 py-3 flex gap-3 group hover:border-amber-200 transition"
+              className={`bg-white rounded-2xl border shadow-sm px-4 py-3 flex gap-3 group transition ${
+                locked
+                  ? 'border-stone-200 opacity-80'
+                  : 'border-amber-100 hover:border-amber-200'
+              }`}
             >
-              {/* Number badge */}
-              <div className="flex-shrink-0 mt-1 w-7 h-7 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center">
-                {idx + 1}
+              {/* Number badge + save status */}
+              <div className="flex-shrink-0 flex flex-col items-center gap-1 mt-1">
+                <div className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center ${
+                  locked ? 'bg-stone-100 text-stone-500' : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {idx + 1}
+                </div>
+                {locked ? (
+                  <span className="text-[10px] text-stone-400 whitespace-nowrap">🔒 已鎖定</span>
+                ) : q.synced ? (
+                  <span className="text-[10px] text-green-600 whitespace-nowrap">已儲存</span>
+                ) : (
+                  <span className="text-[10px] text-amber-600 whitespace-nowrap">未儲存</span>
+                )}
               </div>
 
               {/* Textarea */}
@@ -330,62 +378,74 @@ export default function QuestionEditor() {
                 }}
                 rows={2}
                 value={q.text}
+                readOnly={locked}
                 placeholder="輸入題目內容…"
                 onChange={(e) => {
                   handleTextChange(q.localId, e.target.value)
                   autoExpand(e.target)
                 }}
                 onBlur={() => handleBlur(q.localId)}
-                className="flex-1 resize-none overflow-hidden text-stone-800 placeholder-stone-300 text-sm leading-relaxed focus:outline-none bg-transparent word-break break-words"
+                className={`flex-1 resize-none overflow-hidden text-sm leading-relaxed focus:outline-none word-break break-words ${
+                  locked
+                    ? 'text-stone-500 bg-stone-50 cursor-not-allowed'
+                    : 'text-stone-800 placeholder-stone-300 bg-transparent focus:ring-0'
+                }`}
                 style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}
               />
 
-              {/* Controls */}
-              <div className="flex flex-col items-center gap-1 flex-shrink-0 ml-1">
-                <button
-                  onClick={() => moveQuestion(q.localId, 'up')}
-                  disabled={idx === 0}
-                  className="w-6 h-6 flex items-center justify-center rounded text-stone-300 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-20 disabled:cursor-not-allowed transition text-xs leading-none"
-                  title="上移"
-                >
-                  ▲
-                </button>
-                <button
-                  onClick={() => moveQuestion(q.localId, 'down')}
-                  disabled={idx === questions.length - 1}
-                  className="w-6 h-6 flex items-center justify-center rounded text-stone-300 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-20 disabled:cursor-not-allowed transition text-xs leading-none"
-                  title="下移"
-                >
-                  ▼
-                </button>
-                <button
-                  onClick={() => deleteQuestion(q.localId)}
-                  className="w-6 h-6 flex items-center justify-center rounded text-stone-300 hover:text-red-400 hover:bg-red-50 transition text-base leading-none mt-1 opacity-0 group-hover:opacity-100"
-                  title="刪除"
-                >
-                  ×
-                </button>
-              </div>
+              {/* Controls — only in waiting phase */}
+              {roomPhase === 'waiting' && (
+                <div className="flex flex-col items-center gap-1 flex-shrink-0 ml-1">
+                  <button
+                    onClick={() => moveQuestion(q.localId, 'up')}
+                    disabled={idx === 0}
+                    className="w-6 h-6 flex items-center justify-center rounded text-stone-300 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-20 disabled:cursor-not-allowed transition text-xs leading-none"
+                    title="上移"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    onClick={() => moveQuestion(q.localId, 'down')}
+                    disabled={idx === questions.length - 1}
+                    className="w-6 h-6 flex items-center justify-center rounded text-stone-300 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-20 disabled:cursor-not-allowed transition text-xs leading-none"
+                    title="下移"
+                  >
+                    ▼
+                  </button>
+                  <button
+                    onClick={() => deleteQuestion(q.localId)}
+                    className="w-6 h-6 flex items-center justify-center rounded text-stone-300 hover:text-red-400 hover:bg-red-50 transition text-base leading-none mt-1 opacity-0 group-hover:opacity-100"
+                    title="刪除"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
             </div>
-          ))}
+          )})}
         </div>
 
         {/* Add question button */}
         <button
           onClick={addQuestion}
-          disabled={!connected}
+          disabled={!connected || roomPhase === 'ended'}
           className="mt-4 w-full py-3 border-2 border-dashed border-amber-200 hover:border-amber-400 hover:bg-amber-50 text-amber-600 hover:text-amber-700 text-sm font-semibold rounded-2xl transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          ＋ 新增題目
+          ＋ 新增題目{isMidSession ? '（加在最後）' : ''}
         </button>
       </main>
 
       {/* ── Sticky bottom bar ────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-amber-100 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <p className="text-sm text-stone-400">
-            共 <span className="font-semibold text-stone-700">{questions.length}</span> 題
-          </p>
+          <div className="text-sm text-stone-400">
+            <span>
+              共 <span className="font-semibold text-stone-700">{questions.length}</span> 題
+            </span>
+            {hasUnsynced && (
+              <span className="ml-2 text-amber-600 text-xs font-medium">· 有未儲存變更</span>
+            )}
+          </div>
 
           {roomPhase !== 'waiting' ? (
             /* Session already started — show status + go-to-classroom button */

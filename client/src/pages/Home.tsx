@@ -37,7 +37,12 @@ export default function Home() {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Rename state
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
 
   // Focus input when modal opens
   useEffect(() => {
@@ -45,6 +50,12 @@ export default function Home() {
       setTimeout(() => titleInputRef.current?.focus(), 50)
     }
   }, [showModal])
+
+  useEffect(() => {
+    if (editingRoomId) {
+      setTimeout(() => renameInputRef.current?.focus(), 50)
+    }
+  }, [editingRoomId])
 
   const handleMessage = useCallback(
     (msg: ServerMessage) => {
@@ -109,6 +120,32 @@ export default function Home() {
     })
   }
 
+  function startRename(room: SavedRoom) {
+    setEditingRoomId(room.roomId)
+    setEditTitle(room.title)
+  }
+
+  function saveRename(roomId: string) {
+    const trimmed = editTitle.trim()
+    if (!trimmed) {
+      setEditingRoomId(null)
+      return
+    }
+    setRooms((prev) => {
+      const updated = prev.map((r) =>
+        r.roomId === roomId ? { ...r, title: trimmed } : r
+      )
+      saveRooms(updated)
+      return updated
+    })
+    setEditingRoomId(null)
+  }
+
+  function cancelRename() {
+    setEditingRoomId(null)
+    setEditTitle('')
+  }
+
   // Sort newest first
   const sortedRooms = [...rooms].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -120,7 +157,7 @@ export default function Home() {
       <header className="bg-white border-b border-amber-100 shadow-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-amber-900">薩提爾互動討論</h1>
+            <h1 className="text-xl font-bold text-amber-900">薩提爾討論-互動小卡</h1>
             <p className="text-xs text-stone-400 mt-0.5">主持儀表板</p>
           </div>
           <button
@@ -158,7 +195,32 @@ export default function Home() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-stone-800 truncate">{room.title}</p>
+                  {editingRoomId === room.roomId ? (
+                    <input
+                      ref={renameInputRef}
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onBlur={() => saveRename(room.roomId)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveRename(room.roomId)
+                        if (e.key === 'Escape') cancelRename()
+                      }}
+                      maxLength={60}
+                      className="w-full font-semibold text-stone-800 border border-amber-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="font-semibold text-stone-800 truncate">{room.title}</p>
+                      <button
+                        onClick={() => startRename(room)}
+                        className="flex-shrink-0 text-stone-300 hover:text-amber-600 transition text-sm opacity-50 group-hover:opacity-100"
+                        title="重新命名"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 mt-0.5">
                     <span className="text-xs font-mono text-stone-500 bg-stone-100 rounded px-1.5 py-0.5">
                       {room.roomId}
@@ -290,7 +352,7 @@ export default function Home() {
         </div>
       )}
       <footer className="text-center py-3 text-xs text-stone-300">
-        v6 · 薩提爾互動討論工具 · Made by Lucy Y
+        v7 · 薩提爾討論-互動小卡 · Made by Lucy Y
       </footer>
     </div>
   )

@@ -32,6 +32,8 @@ export type ClientMessage =
   | { type: 'add_question'; question: { id: string; text: string } }
   | { type: 'remove_question'; questionId: string }
   | { type: 'reorder_questions'; questionIds: string[] }
+  | { type: 'update_question'; questionId: string; text: string }
+  | { type: 'set_nickname_visibility'; show: boolean }
   | { type: 'start_session' }
   | { type: 'next_question' }
   | { type: 'submit_answer'; answer: string }
@@ -50,8 +52,10 @@ export type ServerMessage =
       questions: QuestionDraft[]        // full deck so host can restore on rejoin
       participants: ParticipantInfo[]   // who is in the room
       nickname: string                  // confirmed nickname (may be deduped)
+      showNicknames: boolean            // false = show "參與者 N" labels on reveal screens
     }
   | { type: 'participant_list'; participants: ParticipantInfo[] }
+  | { type: 'nickname_visibility'; show: boolean }
   | { type: 'question_deck_updated'; questions: QuestionDraft[] }
   | { type: 'question_updated'; question: Question }
   | { type: 'session_started'; question: Question }

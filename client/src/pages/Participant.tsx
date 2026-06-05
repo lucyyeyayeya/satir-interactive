@@ -108,6 +108,16 @@ interface SessionState {
   submissionsThisQuestion: string[]
   errorMessage: string | null
   joined: boolean
+  showNicknames: boolean  // synced from host toggle
+}
+
+function displayName(
+  pa: { participantId: string; nickname: string; label: string },
+  myId: string | null,
+  showNicknames: boolean
+): string {
+  if (pa.participantId === myId) return pa.nickname
+  return showNicknames ? pa.nickname : pa.label
 }
 
 const initialSessionState: SessionState = {
@@ -120,6 +130,7 @@ const initialSessionState: SessionState = {
   submissionsThisQuestion: [],
   errorMessage: null,
   joined: false,
+  showNicknames: false,
 }
 
 function ParticipantSession({
@@ -160,7 +171,11 @@ function ParticipantSession({
             question: msg.currentQuestion,
             submissionsThisQuestion: [],
             errorMessage: null,
+            showNicknames: msg.showNicknames,
           }
+
+        case 'nickname_visibility':
+          return { ...prev, showNicknames: msg.show }
 
         case 'session_started':
         case 'question_updated':
@@ -350,7 +365,7 @@ function ParticipantSession({
                           }`}
                         >
                           <p className="text-xs font-semibold text-stone-500 mb-1">
-                            {pa.nickname}
+                            {displayName(pa, state.participantId, state.showNicknames)}
                             {isMe && <span className="ml-1 text-amber-500">（你）</span>}
                           </p>
                           <div className="flex flex-col gap-1">
@@ -466,7 +481,7 @@ function ParticipantSession({
                         isMe ? 'text-amber-700' : 'text-stone-600'
                       }`}
                     >
-                      {participant.nickname}
+                      {displayName(participant, state.participantId, state.showNicknames)}
                       {isMe && (
                         <span className="ml-2 text-xs font-normal text-amber-500">（你）</span>
                       )}
@@ -591,7 +606,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
       <div className="w-full h-1.5 bg-gradient-to-r from-amber-300 via-orange-300 to-rose-300" />
       <div className="flex-1 max-w-lg mx-auto w-full">{children}</div>
       <footer className="text-center py-3 text-xs text-stone-300">
-        v6 · 薩提爾互動討論工具 · Made by Lucy Y
+        v7 · 薩提爾討論-互動小卡 · Made by Lucy Y
       </footer>
     </div>
   )

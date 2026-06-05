@@ -31,6 +31,7 @@ interface Room {
   participants: Map<string, Participant>; // participantId → Participant
   nicknames: Set<string>; // currently active (deduped) nicknames
   nextParticipantNumber: number;
+  showNicknames: boolean; // false = display "參與者 N" labels on reveal screens
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +144,7 @@ function handleCreateRoom(ws: WebSocket): void {
     participants: new Map(),
     nicknames: new Set(),
     nextParticipantNumber: 1,
+    showNicknames: false,
   };
   rooms.set(roomId, room);
   clientMeta.set(ws, { roomId, role: "host" });
@@ -176,6 +178,7 @@ function handleJoin(
       questions: room.questions,
       participants: participantListPayload(room),
       nickname: "host",
+      showNicknames: room.showNicknames,
     });
 
     if (room.phase === "revealed") {
@@ -217,6 +220,7 @@ function handleJoin(
       questions: room.questions,
       participants: participantListPayload(room),
       nickname: confirmedNickname,
+      showNicknames: room.showNicknames,
     });
 
     broadcastParticipantList(room);
@@ -236,20 +240,23 @@ function handleAddQuestion(ws: WebSocket, question: Question): void {
     return;
   }
 
-  if (room.phase !== "waiting") {
-    send(ws, {
-      type: "error",
-      message: "課堂進行中，無法修改題目",
-    });
-    return;
-  }
-
   if (!question || typeof question.id !== "string" || typeof question.text !== "string") {
     send(ws, { type: "error", message: "題目格式錯誤" });
     return;
   }
 
-  room.questions.push({ id: question.id, text: question.text });
+  if (room.phase === "ended") {
+    send(ws, { type: "error", message: "課堂已結束，無法修改題目" });
+    return;
+  }
+
+  if (room.phase === "waiting") {
+    room.questions.push({ id: question.id, text: question.text });
+  } else {
+    // During session: only allow appending new questions at the end
+    room.questions.push({ id: question.id, text: question.text });
+  }
+
   broadcastAll(room, { type: "question_deck_updated", questions: room.questions });
 }
 
@@ -283,6 +290,68 @@ function handleRemoveQuestion(ws: WebSocket, questionId: string): void {
   }
 
   broadcastAll(room, { type: "question_deck_updated", questions: room.questions });
+}
+
+function handleUpdateQuestion(
+  ws: WebSocket,
+  questionId: string,
+  text: string
+): void {
+  const meta = clientMeta.get(ws);
+  if (!meta || meta.role !== "host") {
+    send(ws, { type: "error", message: "只有主持人可以修改題目" });
+    return;
+  }
+
+  const room = rooms.get(meta.roomId);
+  if (!room) {
+    send(ws, { type: "error", message: "找不到此房間" });
+    return;
+  }
+
+  if (room.phase === "ended") {
+    send(ws, { type: "error", message: "課堂已結束，無法修改題目" });
+    return;
+  }
+
+  if (typeof questionId !== "string" || typeof text !== "string") {
+    send(ws, { type: "error", message: "題目格式錯誤" });
+    return;
+  }
+
+  const idx = room.questions.findIndex((q) => q.id === questionId);
+  if (idx === -1) {
+    send(ws, { type: "error", message: `找不到題目（id: ${questionId}）` });
+    return;
+  }
+
+  if (room.phase !== "waiting" && idx <= room.currentIndex) {
+    send(ws, {
+      type: "error",
+      message: "無法修改已出題或進行中的題目",
+    });
+    return;
+  }
+
+  room.questions[idx] = { ...room.questions[idx], text };
+  broadcastAll(room, { type: "question_deck_updated", questions: room.questions });
+}
+
+function handleSetNicknameVisibility(ws: WebSocket, show: boolean): void {
+  const meta = clientMeta.get(ws);
+  if (!meta || meta.role !== "host") {
+    send(ws, { type: "error", message: "只有主持人可以切換暱稱顯示" });
+    return;
+  }
+
+  const room = rooms.get(meta.roomId);
+  if (!room) {
+    send(ws, { type: "error", message: "找不到此房間" });
+    return;
+  }
+
+  room.showNicknames = show;
+  broadcastAll(room, { type: "nickname_visibility", show });
 }
 
 function handleReorderQuestions(ws: WebSocket, questionIds: string[]): void {
@@ -551,6 +620,21 @@ wss.on("connection", (ws: WebSocket) => {
       case "reorder_questions": {
         const questionIds = msg.questionIds as string[];
         handleReorderQuestions(ws, questionIds);
+        break;
+      }
+      case "update_question": {
+        const questionId = msg.questionId as string;
+        const text = msg.text as string;
+        handleUpdateQuestion(ws, questionId, text);
+        break;
+      }
+      case "set_nickname_visibility": {
+        const show = msg.show as boolean;
+        if (typeof show !== "boolean") {
+          send(ws, { type: "error", message: "暱稱顯示設定格式錯誤" });
+          return;
+        }
+        handleSetNicknameVisibility(ws, show);
         break;
       }
       case "start_session": {
