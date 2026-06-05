@@ -12,6 +12,15 @@ import {
 } from '../types'
 import { WS_URL } from '../lib/config'
 
+function loadQuestionsLocally(roomId: string): { id: string; text: string }[] {
+  try {
+    const raw = localStorage.getItem(`satir_questions_${roomId}`)
+    return raw ? (JSON.parse(raw) as { id: string; text: string }[]) : []
+  } catch {
+    return []
+  }
+}
+
 // ── QR Modal ──────────────────────────────────────────────────────────────────
 
 function QRModal({
@@ -533,6 +542,10 @@ export default function Host() {
   // Prevent waiting-screen flash: hide content until server confirms phase
   const [serverSynced, setServerSynced] = useState(false)
 
+  // Room missing on server (e.g. after a Railway restart) — offer local restore
+  const [roomMissing, setRoomMissing] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+
   const joinUrl = `${window.location.origin}/join/${roomId}`
   const joinedRef = useRef(false)
 
@@ -546,6 +559,8 @@ export default function Host() {
     switch (msg.type) {
       case 'joined':
         setServerSynced(true)
+        setRoomMissing(false)
+        setRestoring(false)
         setPhase(msg.phase)
         setCurrentQuestion(msg.currentQuestion)
         setParticipantCount(msg.participantCount)
@@ -605,7 +620,12 @@ export default function Host() {
         break
 
       case 'error':
-        setErrorMsg(msg.message)
+        if (msg.message.includes('找不到房間')) {
+          setRoomMissing(true)
+          setRestoring(false)
+        } else {
+          setErrorMsg(msg.message)
+        }
         break
 
       default:
@@ -675,6 +695,13 @@ export default function Host() {
   function handleToggleShowNicknames(show: boolean) {
     setShowNicknames(show)
     send({ type: 'set_nickname_visibility', show } as ClientMessage)
+  }
+
+  function handleRestoreRoom() {
+    if (!roomId) return
+    setRestoring(true)
+    const savedQuestions = loadQuestionsLocally(roomId)
+    send({ type: 'restore_room', roomId, questions: savedQuestions } as ClientMessage)
   }
 
   const isLastQuestion =
@@ -909,8 +936,34 @@ export default function Host() {
             </div>
           )}
 
-          {/* Loading spinner until server confirms phase (prevents waiting-screen flash) */}
-          {!serverSynced ? (
+          {/* Room missing on server (e.g. after restart) — offer local restore */}
+          {roomMissing ? (
+            <div className="flex flex-col items-center justify-center min-h-[300px] gap-5 text-center px-4">
+              <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center text-3xl">
+                🔄
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-stone-700 mb-1">伺服器上找不到這個討論</h2>
+                <p className="text-stone-500 text-sm max-w-md leading-relaxed">
+                  伺服器可能重新啟動過，進行中的回答無法復原。
+                  你可以用本機儲存的題目重新建立這個討論（沿用相同房間代碼），讓學員重新加入。
+                </p>
+              </div>
+              <button
+                onClick={handleRestoreRoom}
+                disabled={restoring}
+                className="px-8 py-3 bg-amber-700 hover:bg-amber-800 disabled:bg-stone-200 disabled:text-stone-400 text-white font-bold text-sm rounded-2xl transition shadow-md"
+              >
+                {restoring ? '還原中…' : '用本機題目還原討論'}
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="text-xs text-stone-400 hover:text-amber-700 hover:underline transition"
+              >
+                返回儀表板
+              </button>
+            </div>
+          ) : !serverSynced ? (
             <div className="flex items-center justify-center min-h-[300px]">
               <div className="w-8 h-8 rounded-full border-4 border-amber-200 border-t-amber-500 animate-spin" />
             </div>
@@ -997,7 +1050,7 @@ export default function Host() {
 
       {/* Version footer */}
       <footer className="text-center py-2 text-xs text-stone-300 border-t border-amber-50">
-        v7 · 薩提爾討論-互動小卡 · Made by Lucy Y
+        v8 · 薩提爾討論-互動小卡 · Made by Lucy Y
       </footer>
     </div>
   )

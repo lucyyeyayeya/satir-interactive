@@ -352,7 +352,7 @@ export default function Home() {
         </div>
       )}
       <footer className="text-center py-3 text-xs text-stone-300">
-        v7 · 薩提爾討論-互動小卡 · Made by Lucy Y
+        v8 · 薩提爾討論-互動小卡 · Made by Lucy Y
       </footer>
     </div>
   )
