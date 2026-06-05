@@ -246,7 +246,7 @@ function handleAddQuestion(ws: WebSocket, question: Question): void {
   }
 
   if (room.phase === "ended") {
-    send(ws, { type: "error", message: "課堂已結束，無法修改題目" });
+    send(ws, { type: "error", message: "討論已結束，無法修改題目" });
     return;
   }
 
@@ -276,7 +276,7 @@ function handleRemoveQuestion(ws: WebSocket, questionId: string): void {
   if (room.phase !== "waiting") {
     send(ws, {
       type: "error",
-      message: "課堂進行中，無法修改題目",
+      message: "討論進行中，無法修改題目",
     });
     return;
   }
@@ -310,7 +310,7 @@ function handleUpdateQuestion(
   }
 
   if (room.phase === "ended") {
-    send(ws, { type: "error", message: "課堂已結束，無法修改題目" });
+    send(ws, { type: "error", message: "討論已結束，無法修改題目" });
     return;
   }
 
@@ -370,7 +370,7 @@ function handleReorderQuestions(ws: WebSocket, questionIds: string[]): void {
   if (room.phase !== "waiting") {
     send(ws, {
       type: "error",
-      message: "課堂進行中，無法修改題目",
+      message: "討論進行中，無法修改題目",
     });
     return;
   }
@@ -399,7 +399,7 @@ function handleReorderQuestions(ws: WebSocket, questionIds: string[]): void {
 function handleStartSession(ws: WebSocket): void {
   const meta = clientMeta.get(ws);
   if (!meta || meta.role !== "host") {
-    send(ws, { type: "error", message: "只有主持人可以開始課堂" });
+    send(ws, { type: "error", message: "只有主持人可以開始討論" });
     return;
   }
 
@@ -410,7 +410,7 @@ function handleStartSession(ws: WebSocket): void {
   }
 
   if (room.phase !== "waiting") {
-    send(ws, { type: "error", message: "課堂已開始，無法重新啟動" });
+    send(ws, { type: "error", message: "討論已開始，無法重新啟動" });
     return;
   }
 
@@ -442,12 +442,12 @@ function handleNextQuestion(ws: WebSocket): void {
   }
 
   if (room.phase === "ended") {
-    send(ws, { type: "error", message: "課堂已結束" });
+    send(ws, { type: "error", message: "討論已結束" });
     return;
   }
 
   if (room.phase === "waiting") {
-    send(ws, { type: "error", message: "課堂尚未開始" });
+    send(ws, { type: "error", message: "討論尚未開始" });
     return;
   }
 
@@ -520,12 +520,12 @@ function handleReveal(ws: WebSocket): void {
   }
 
   if (room.phase === "ended") {
-    send(ws, { type: "error", message: "課堂已結束" });
+    send(ws, { type: "error", message: "討論已結束" });
     return;
   }
 
   if (room.phase === "waiting") {
-    send(ws, { type: "error", message: "課堂尚未開始" });
+    send(ws, { type: "error", message: "討論尚未開始" });
     return;
   }
 

@@ -62,7 +62,7 @@ export default function Home() {
       if (msg.type === 'room_created') {
         const newRoom: SavedRoom = {
           roomId: msg.roomId,
-          title: pendingTitleRef.current || '新課堂',
+          title: pendingTitleRef.current || '新討論',
           createdAt: new Date().toISOString(),
         }
         // Save to localStorage SYNCHRONOUSLY before navigate so the new Home
@@ -96,7 +96,7 @@ export default function Home() {
   }
 
   function confirmCreate() {
-    const title = titleInput.trim() || `課堂 ${formatDate(new Date().toISOString())}`
+    const title = titleInput.trim() || `討論 ${formatDate(new Date().toISOString())}`
     if (!connected) {
       setError('尚未連線至伺服器，請稍候再試')
       return
@@ -164,7 +164,7 @@ export default function Home() {
             onClick={openModal}
             className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white text-sm font-semibold rounded-xl transition shadow-sm"
           >
-            + 新建課堂
+            + 新建討論
           </button>
         </div>
       </header>
@@ -175,13 +175,13 @@ export default function Home() {
             <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center text-3xl mb-4">
               📋
             </div>
-            <p className="text-stone-500 font-medium text-lg">尚未建立任何課堂</p>
-            <p className="text-stone-400 text-sm mt-1">點擊右上角「新建課堂」開始</p>
+            <p className="text-stone-500 font-medium text-lg">尚未建立任何討論</p>
+            <p className="text-stone-400 text-sm mt-1">點擊右上角「新建討論」開始</p>
           </div>
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-stone-400 font-medium uppercase tracking-wider mb-4">
-              我的課堂（共 {sortedRooms.length} 間）
+              我的討論（共 {sortedRooms.length} 間）
             </p>
             {sortedRooms.map((room) => (
               <div
@@ -243,9 +243,9 @@ export default function Home() {
                   <button
                     onClick={() => navigate(`/host/${room.roomId}`)}
                     className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition"
-                    title="進入課堂"
+                    title="進入討論"
                   >
-                    ▶ 課堂
+                    ▶ 討論
                   </button>
                   <button
                     onClick={() => deleteRoom(room.roomId)}
@@ -271,11 +271,11 @@ export default function Home() {
             className="bg-white rounded-2xl shadow-xl border border-amber-100 w-full max-w-md p-6"
             onKeyDown={handleModalKeyDown}
           >
-            <h2 className="text-lg font-bold text-stone-800 mb-1">新建課堂</h2>
-            <p className="text-sm text-stone-400 mb-4">輸入課堂名稱，建立後可管理題目</p>
+            <h2 className="text-lg font-bold text-stone-800 mb-1">新建討論</h2>
+            <p className="text-sm text-stone-400 mb-4">輸入討論名稱，建立後可管理題目</p>
 
             <label className="block text-xs font-semibold text-stone-600 mb-1.5">
-              課堂名稱
+              討論名稱
             </label>
             <input
               ref={titleInputRef}
@@ -344,7 +344,7 @@ export default function Home() {
                     建立中...
                   </span>
                 ) : (
-                  '建立課堂'
+                  '建立討論'
                 )}
               </button>
             </div>

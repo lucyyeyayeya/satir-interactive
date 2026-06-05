@@ -9,11 +9,11 @@ const STORAGE_KEY = 'satir_rooms'
 function loadRoomTitle(roomId: string): string {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return '課堂'
+    if (!raw) return '討論'
     const rooms = JSON.parse(raw) as SavedRoom[]
-    return rooms.find((r) => r.roomId === roomId)?.title ?? '課堂'
+    return rooms.find((r) => r.roomId === roomId)?.title ?? '討論'
   } catch {
-    return '課堂'
+    return '討論'
   }
 }
 
@@ -49,7 +49,7 @@ export default function QuestionEditor() {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
 
-  const roomTitle = roomId ? loadRoomTitle(roomId) : '課堂'
+  const roomTitle = roomId ? loadRoomTitle(roomId) : '討論'
 
   // Local question deck — server is source of truth on mount, then we sync actions
   const [questions, setQuestions] = useState<LocalQuestion[]>([])
@@ -319,7 +319,7 @@ export default function QuestionEditor() {
         {/* Mid-session editing notice */}
         {isMidSession && (
           <div className="mb-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
-            課堂進行中：可修改後續題目、在最後新增題目。已出題與進行中題目無法修改。
+            討論進行中：可修改後續題目、在最後新增題目。已出題與進行中題目無法修改。
           </div>
         )}
 
@@ -451,7 +451,7 @@ export default function QuestionEditor() {
             /* Session already started — show status + go-to-classroom button */
             <div className="flex items-center gap-3">
               <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 font-semibold">
-                {roomPhase === 'ended' ? '課堂已結束' : '課堂進行中'}
+                {roomPhase === 'ended' ? '討論已結束' : '討論進行中'}
               </span>
               <button
                 onClick={() => navigate(`/host/${roomId}`)}
@@ -495,7 +495,7 @@ export default function QuestionEditor() {
               ) : (
                 <>
                   <span>▶</span>
-                  開始課堂
+                  開始討論
                 </>
               )}
             </button>

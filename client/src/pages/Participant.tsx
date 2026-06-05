@@ -41,7 +41,7 @@ export default function Participant() {
               <div className="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center mx-auto mb-4">
                 <span className="text-3xl">🌿</span>
               </div>
-              <h1 className="text-2xl font-semibold text-stone-800 mb-1">加入課堂</h1>
+              <h1 className="text-2xl font-semibold text-stone-800 mb-1">加入討論</h1>
               {roomId && (
                 <p className="text-stone-400 text-sm">
                   課室代碼：
@@ -78,7 +78,7 @@ export default function Participant() {
                 disabled={!pendingNickname.trim()}
                 className="w-full py-4 rounded-2xl bg-amber-500 text-white font-semibold text-base tracking-wide shadow-md active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 hover:bg-amber-600"
               >
-                加入課堂
+                加入討論
               </button>
             </form>
           </div>
@@ -297,7 +297,7 @@ function ParticipantSession({
             <h2 className="text-xl font-semibold text-rose-700 mb-2">發生錯誤</h2>
             <p className="text-rose-600 text-base leading-relaxed">{state.errorMessage}</p>
           </div>
-          <p className="text-stone-400 text-sm">請確認連結是否正確，或聯繫課堂主持人</p>
+          <p className="text-stone-400 text-sm">請確認連結是否正確，或聯繫討論主持人</p>
         </div>
       </PageShell>
     )
@@ -310,7 +310,7 @@ function ParticipantSession({
       <PageShell>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
           <SpinnerRing />
-          <p className="text-stone-500 text-lg tracking-wide">正在加入課堂...</p>
+          <p className="text-stone-500 text-lg tracking-wide">正在加入討論...</p>
           {roomId && (
             <p className="text-stone-400 text-sm">
               課室代碼：<span className="font-mono font-semibold text-stone-600">{roomId}</span>
@@ -408,7 +408,7 @@ function ParticipantSession({
 
           <div>
             <h2 className="text-2xl font-semibold text-stone-700 mb-2">已加入！</h2>
-            <p className="text-stone-500 text-base">等待老師開始課程...</p>
+            <p className="text-stone-500 text-base">等待老師開始討論...</p>
           </div>
 
           {state.confirmedNickname && (

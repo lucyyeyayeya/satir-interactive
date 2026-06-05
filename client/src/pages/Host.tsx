@@ -32,7 +32,7 @@ function QRModal({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-white rounded-2xl shadow-xl border border-amber-100 w-full max-w-sm p-6 text-center">
-        <h2 className="text-lg font-bold text-stone-800 mb-1">加入課堂</h2>
+        <h2 className="text-lg font-bold text-stone-800 mb-1">加入討論</h2>
         <p className="text-xs text-stone-400 mb-4">學員掃描 QR Code 或使用連結加入</p>
         <img
           src={qrSrc}
@@ -245,10 +245,10 @@ function WaitingMain({
         <div className="text-5xl mb-3">🌿</div>
         <h2 className="text-2xl font-bold text-stone-700">準備開始</h2>
         {questionCount === 0 ? (
-          <p className="text-stone-400 text-sm mt-1">尚未設定題目，請前往題庫頁設定後再開始課堂</p>
+          <p className="text-stone-400 text-sm mt-1">尚未設定題目，請前往題庫頁設定後再開始討論</p>
         ) : (
           <p className="text-stone-400 text-sm mt-1">
-            已設定 {questionCount} 題，等學員加入後按「開始課堂」
+            已設定 {questionCount} 題，等學員加入後按「開始討論」
           </p>
         )}
       </div>
@@ -311,7 +311,7 @@ function WaitingMain({
             onClick={onStart}
             className="px-10 py-3.5 bg-amber-700 hover:bg-amber-800 text-white font-bold text-base rounded-2xl transition shadow-md"
           >
-            ▶ 開始課堂
+            ▶ 開始討論
           </button>
           <Link
             to={`/host/${roomId}/edit`}
@@ -485,7 +485,7 @@ function RevealedMain({
               onClick={onNext}
               className="px-7 py-2.5 bg-stone-700 hover:bg-stone-800 text-white font-bold rounded-xl transition shadow-sm text-sm"
             >
-              結束課堂
+              結束討論
             </button>
           ) : (
             <button
